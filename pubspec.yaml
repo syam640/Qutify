@@ -10,12 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # State management
   provider: ^6.1.2
-
-  # For currency formatting (₹ symbol, etc.)
   intl: ^0.18.1
+  pdf: ^3.10.7
+  printing: ^5.12.0
+  shared_preferences: ^2.2.3
+
 
   # Optional - animations, gradients, icons (available by default in Material)
   cupertino_icons: ^1.0.8

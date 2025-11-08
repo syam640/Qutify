@@ -4,7 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui'; // For ImageFilter.blur
+import 'dart:ui';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 /* ============================
   Local Storage Simulation (Replaces shared_preferences)
@@ -715,10 +720,6 @@ class QuoteForm extends StatelessWidget {
     });
   }
 }
-
-/* ============================
-  Widgets: QuotePreview (Styled)
-  ============================ */
 /* ============================
   Widgets: QuotePreview (Fixed)
   ============================ */
@@ -794,9 +795,9 @@ class QuotePreview extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quote Preview (Print Layout)')),
+      appBar: AppBar(title: Text('Quote Preview (Print Layout)')),
       body: SafeArea(
-        child: SingleChildScrollView( // ✅ Fix #3
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Center(
             child: Container(
@@ -810,7 +811,6 @@ class QuotePreview extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ Fix #1: Flexible + FittedBox for long header text
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,7 +849,7 @@ class QuotePreview extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const Divider(color: Colors.black, thickness: 1.5),
+                      Divider(color: Colors.black, thickness: 1.5),
                       const SizedBox(height: 16),
 
                       // Client Info
@@ -877,7 +877,7 @@ class QuotePreview extends StatelessWidget {
                           TableRow(
                             decoration: BoxDecoration(
                                 color: theme.primaryColor.withOpacity(0.15)),
-                            children: const [
+                            children: [
                               TableCell(
                                   child: Padding(
                                       padding: EdgeInsets.all(8.0),
@@ -940,7 +940,6 @@ class QuotePreview extends StatelessWidget {
                       const SizedBox(height: 24),
                       const Divider(),
 
-                      // ✅ Fix #2: Wrap instead of Row
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
                         runAlignment: WrapAlignment.center,
@@ -948,17 +947,17 @@ class QuotePreview extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          const Text('Terms: Payment required within 30 days.',
+                          Text('Terms: Payment required within 30 days.',
                               style: TextStyle(
                                   fontStyle: FontStyle.italic, color: Colors.grey)),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.print),
                             label: const Text('Print / Save PDF'),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Print action simulated')));
+                            onPressed: () async {
+                              final qp = Provider.of<QuoteProvider>(context, listen: false);
+                              await _exportQuoteAsPDF(context, qp);
                             },
-                          ),
+                          )
                         ],
                       ),
                     ],
@@ -971,6 +970,84 @@ class QuotePreview extends StatelessWidget {
       ),
     );
   }
+}
+Future<void> _exportQuoteAsPDF(BuildContext context, QuoteProvider qp) async {
+  final pdf = pw.Document();
+  final date = DateFormat('dd MMM, yyyy').format(DateTime.now());
+
+  pdf.addPage(
+    pw.MultiPage(
+      build: (pw.Context context) => [
+        pw.Header(
+          level: 0,
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('QUOTIFY PRO SOLUTIONS',
+                  style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Quote: ${qp.quote.reference.isEmpty ? 'N/A' : qp.quote.reference}',
+                  style: const pw.TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+        pw.Text('Date: $date', style: const pw.TextStyle(fontSize: 12)),
+        pw.SizedBox(height: 10),
+        pw.Text('Bill To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text(qp.quote.clientName.isEmpty ? 'N/A' : qp.quote.clientName),
+        pw.Text(qp.quote.clientAddress.isEmpty ? 'N/A' : qp.quote.clientAddress),
+        pw.SizedBox(height: 20),
+
+        // Table
+        pw.Table.fromTextArray(
+          headers: ['Description', 'Qty', 'Rate', 'Total'],
+          data: qp.quote.items.map((it) {
+            final res = calculateItemTotal(it, taxInclusive: qp.quote.taxInclusive);
+            return [
+              it.name,
+              it.qty.toString(),
+              formatCurrency(it.rate, code: qp.quote.currencyCode),
+              formatCurrency(res.total, code: qp.quote.currencyCode),
+            ];
+          }).toList(),
+          headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+          cellAlignment: pw.Alignment.centerLeft,
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          cellStyle: const pw.TextStyle(fontSize: 11),
+        ),
+        pw.SizedBox(height: 20),
+
+        pw.Divider(),
+        pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('Subtotal: ${formatCurrency(qp.subtotal)}'),
+              pw.Text('Tax: ${formatCurrency(qp.totalTax)}'),
+              pw.Text(
+                'Grand Total: ${formatCurrency(qp.grandTotal)}',
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 30),
+        pw.Text('Terms: Payment required within 30 days.',
+            style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic)),
+        pw.SizedBox(height: 10),
+        pw.Text('Generated by Quotify Pro Elite', style: const pw.TextStyle(fontSize: 10)),
+      ],
+    ),
+  );
+
+  // Opens print/save/share dialog
+  await Printing.layoutPdf(
+    onLayout: (PdfPageFormat format) async => pdf.save(),
+  );
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('PDF Generated Successfully!')),
+  );
 }
 
 /* ============================
@@ -1057,7 +1134,7 @@ class QuoteHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quotify Pro Elite - Builder', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, letterSpacing: 0.8)),
+        title:  Text('Quotify Pro Elite - Builder', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, letterSpacing: 0.8)),
         backgroundColor: const Color(0xFF121212),
         elevation: 0,
       ),
