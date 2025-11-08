@@ -719,6 +719,9 @@ class QuoteForm extends StatelessWidget {
 /* ============================
   Widgets: QuotePreview (Styled)
   ============================ */
+/* ============================
+  Widgets: QuotePreview (Fixed)
+  ============================ */
 
 class QuotePreview extends StatelessWidget {
   const QuotePreview({Key? key}) : super(key: key);
@@ -756,7 +759,8 @@ class QuotePreview extends StatelessWidget {
     );
   }
 
-  Widget _buildTotalRow(String label, double amount, Color color, String currencyCode, {bool isGrandTotal = false}) {
+  Widget _buildTotalRow(String label, double amount, Color color, String currencyCode,
+      {bool isGrandTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -787,89 +791,180 @@ class QuotePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final qp = Provider.of<QuoteProvider>(context, listen: false);
     final theme = Theme.of(context);
+    final isWide = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Quote Preview (Print Layout)')),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 800), // Max width for print layout
+      body: SafeArea(
+        child: SingleChildScrollView( // ✅ Fix #3
           padding: const EdgeInsets.all(16.0),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            color: Colors.white, // White background for print-like preview
-            child: Padding(
-              padding: const EdgeInsets.all(40.0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Header (Your Company & Quote Details)
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text('QUOTIFY PRO SOLUTIONS', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: theme.primaryColor, letterSpacing: 1.2)),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text('Quote: ${qp.quote.reference.isEmpty ? 'N/A' : qp.quote.reference}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                    Text('Date: ${DateFormat('dd MMM, yyyy').format(DateTime.now())}', style: const TextStyle(color: Colors.grey)),
-                  ]),
-                ]),
-                const Divider(color: Colors.black, thickness: 1.5),
-                const SizedBox(height: 16),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(30.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ✅ Fix #1: Flexible + FittedBox for long header text
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'QUOTIFY PRO SOLUTIONS',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  color: theme.primaryColor,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Quote: ${qp.quote.reference.isEmpty ? 'N/A' : qp.quote.reference}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, color: Colors.black),
+                                ),
+                                Text(
+                                  'Date: ${DateFormat('dd MMM, yyyy').format(DateTime.now())}',
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(color: Colors.black, thickness: 1.5),
+                      const SizedBox(height: 16),
 
-                // Client Details
-                const Text('Bill To:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                Text(qp.quote.clientName.isEmpty ? 'N/A' : qp.quote.clientName, style: const TextStyle(color: Colors.black87)),
-                Text(qp.quote.clientAddress.isEmpty ? 'N/A' : qp.quote.clientAddress, style: const TextStyle(color: Colors.black87)),
-                const SizedBox(height: 24),
+                      // Client Info
+                      const Text('Bill To:',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.black)),
+                      Text(qp.quote.clientName.isEmpty ? 'N/A' : qp.quote.clientName,
+                          style: const TextStyle(color: Colors.black87)),
+                      Text(qp.quote.clientAddress.isEmpty ? 'N/A' : qp.quote.clientAddress,
+                          style: const TextStyle(color: Colors.black87)),
+                      const SizedBox(height: 24),
 
-                // Itemized List Table
-                Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(4),
-                    1: FlexColumnWidth(1.5),
-                    2: FlexColumnWidth(2),
-                    3: FlexColumnWidth(2.5),
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    TableRow(
-                      decoration: BoxDecoration(color: theme.primaryColor.withOpacity(0.15)),
-                      children: const [
-                        TableCell(child: Padding(padding: EdgeInsets.all(8.0), child: Text('DESCRIPTION', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)))),
-                        TableCell(child: Padding(padding: EdgeInsets.all(8.0), child: Text('QTY', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)))),
-                        TableCell(child: Padding(padding: EdgeInsets.all(8.0), child: Text('RATE (₹)', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)))),
-                        TableCell(child: Padding(padding: EdgeInsets.all(8.0), child: Text('TOTAL (₹)', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)))),
-                      ],
-                    ),
-                    ...qp.quote.items.map((it) => _buildItemRow(it, qp.quote.taxInclusive, qp.quote.currencyCode)).toList(),
-                  ],
-                ),
-                const SizedBox(height: 32),
+                      // Table
+                      Table(
+                        columnWidths: const {
+                          0: FlexColumnWidth(4),
+                          1: FlexColumnWidth(1.5),
+                          2: FlexColumnWidth(2),
+                          3: FlexColumnWidth(2.5),
+                        },
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(
+                                color: theme.primaryColor.withOpacity(0.15)),
+                            children: const [
+                              TableCell(
+                                  child: Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('DESCRIPTION',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87)))),
+                              TableCell(
+                                  child: Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('QTY',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87)))),
+                              TableCell(
+                                  child: Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('RATE (₹)',
+                                          textAlign: TextAlign.right,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87)))),
+                              TableCell(
+                                  child: Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('TOTAL (₹)',
+                                          textAlign: TextAlign.right,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87)))),
+                            ],
+                          ),
+                          ...qp.quote.items.map((it) => _buildItemRow(
+                              it, qp.quote.taxInclusive, qp.quote.currencyCode))
+                        ],
+                      ),
+                      const SizedBox(height: 32),
 
-                // Totals Summary
-                Container(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: 300,
-                    child: Column(
-                      children: [
-                        _buildTotalRow('Subtotal (Net)', qp.subtotal, Colors.black87, qp.quote.currencyCode),
-                        _buildTotalRow('Total Tax', qp.totalTax, Colors.orange.shade800, qp.quote.currencyCode),
-                        const Divider(color: Colors.black, thickness: 2),
-                        _buildTotalRow('GRAND TOTAL', qp.grandTotal, theme.primaryColor, qp.quote.currencyCode, isGrandTotal: true),
-                      ],
-                    ),
+                      // Totals
+                      Container(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 300,
+                          child: Column(
+                            children: [
+                              _buildTotalRow('Subtotal (Net)', qp.subtotal,
+                                  Colors.black87, qp.quote.currencyCode),
+                              _buildTotalRow('Total Tax', qp.totalTax,
+                                  Colors.orange.shade800, qp.quote.currencyCode),
+                              const Divider(color: Colors.black, thickness: 2),
+                              _buildTotalRow('GRAND TOTAL', qp.grandTotal,
+                                  theme.primaryColor, qp.quote.currencyCode,
+                                  isGrandTotal: true),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(),
+
+                      // ✅ Fix #2: Wrap instead of Row
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        runAlignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          const Text('Terms: Payment required within 30 days.',
+                              style: TextStyle(
+                                  fontStyle: FontStyle.italic, color: Colors.grey)),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.print),
+                            label: const Text('Print / Save PDF'),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Print action simulated')));
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                const Divider(),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('Terms: Payment required within 30 days.', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.print),
-                    label: const Text('Print / Save PDF'),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Print action (simulated)')));
-                    },
-                  )
-                ])
-              ]),
+              ),
             ),
           ),
         ),
